@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Not Defteri</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container">
+    <h1 style="color: green; margin-bottom: 30px; margin-left: 20px;">Not Defteri</h1>
+
+    <div id="notification" class="notification"></div>
+
+    <section id="note-section">
+        <h2>Notlar</h2>
+        <div class="note-controls">
+            <input type="text" id="noteInput" placeholder="Yeni not yaz">
+            <button id="addNoteBtn">Not Ekle</button>
+        </div>
+        <ul id="noteList" class="note-list"></ul>
+    </section>
+
+
+    <section id="weather-section">
+        <h2>Hava Durumu</h2>
+        <div class="weather-controls">
+            <input type="text" id="cityInput" placeholder="Şehir adı gir">
+            <button id="getWeatherBtn">Hava Durumunu Getir</button>
+        </div>
+        <div id="weatherResult" class="weather-result"></div>
+    </section>
+</div>
+
+<script>
+    document.getElementById('addNoteBtn').addEventListener('click', addNote);
+
+    // EVENT LİSTENERS
+    document.getElementById('getWeatherBtn').addEventListener('click', getWeather);
+
+    // SAYFA YÜKLENDİĞİNDE
+    document.addEventListener('DOMContentLoaded', fetchNotes);
+
+    function addNote() {
+        const noteInput = document.getElementById('noteInput');
+        const content = noteInput.value;
+        if (!content) return alert('Not içeriği boş olamaz!');
+
+        fetch('/api/notes/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        })
+            .then(() => {
+                noteInput.value = '';
+                fetchNotes();
+                showNotification('Not başarıyla eklendi!');
+            })
+            .catch(error => console.error('Not eklerken hata oluştu:', error));
+    }
+
+    function fetchNotes() {
+        fetch('/api/notes/all')
+            .then(response => response.json())
+            .then(data => {
+                const noteList = document.getElementById('noteList');
+                noteList.innerHTML = ''; // Mevcut notları temizle
+                data.forEach(note => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                            ${note.content}
+                            <div>
+                                <button style="background-color:green" class="btn-update" onclick="updateNotePrompt(${note.id})">Güncelle</button>
+                                <button style="background-color:red" class="btn-delete" onclick="deleteNote(${note.id})">Sil</button>
+                            </div>`;
+                    noteList.appendChild(li);
+                });
+            })
+            .catch(error => console.error('Notları getirirken hata oluştu:', error));
+    }
+
+    function deleteNote(id) {
+        fetch(`/api/notes/${id}`, { method: 'DELETE' })
+            .then(() => {
+                fetchNotes();
+                showNotification('Not başarıyla silindi!');
+            })
+            .catch(error => console.error('Not silerken hata oluştu:', error));
+    }
+
+    function updateNotePrompt(id) {
+        const newContent = prompt('Yeni not içeriğini girin:');
+        if (!newContent) return;
+
+        fetch(`/api/notes/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: newContent })
+        })
+            .then(() => {
+                fetchNotes();
+                showNotification('Not başarıyla güncellendi!');
+            })
+            .catch(error => console.error('Not güncellerken hata oluştu:', error));
+    }
+
+    // HAVA DURUMU
+    function getWeather() {
+        const cityInput = document.getElementById('cityInput');
+        const city = cityInput.value;
+        fetch(`/api/weather/description?city=${city}`)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('weatherResult').textContent = data;
+            })
+            .catch(error => console.error('Hava durumu alınamadı:', error));
+    }
+
+    // BİLDİRİM
+    function showNotification(message) {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.style.display = 'block';
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
+    }
+</script>
+</body>
+</html>
+
